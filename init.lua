@@ -234,8 +234,43 @@ vim.keymap.set('n', '<leader>/', 'gcc', { desc = 'toggle comment', remap = true 
 vim.keymap.set('v', '<leader>/', 'gc', { desc = 'toggle comment', remap = true })
 
 -- line number
-vim.keymap.set('n', '<leader>n', '<cmd>set nu!<CR>', { desc = 'toggle line number' })
-vim.keymap.set('n', '<leader>rn', '<cmd>set rnu!<CR>', { desc = 'toggle relative number' })
+-- vim.keymap.set('n', '<leader>n', '<cmd>set nu!<CR>', { desc = 'toggle line number' })
+-- vim.keymap.set('n', '<leader>rn', '<cmd>set rnu!<CR>', { desc = 'toggle relative number' })
+
+-- Function to toggle between relative and absolute line numbers
+local function toggle_line_number_mode()
+  if vim.wo.relativenumber then
+    vim.wo.relativenumber = false
+    vim.wo.number = true
+  else
+    vim.wo.relativenumber = true
+  end
+end
+
+-- Map <leader>n to the toggle function
+vim.keymap.set('n', '<leader>n', toggle_line_number_mode, { noremap = true, silent = false })
+
+-- terminal commands
+vim.keymap.set('n', '<leader>h', function()
+  require('nvterm.terminal').new 'horizontal'
+end, { desc = 'terminal new horizontal term' })
+
+vim.keymap.set('n', '<leader>v', function()
+  require('nvterm.terminal').new 'vertical'
+end, { desc = 'terminal new vertical term' })
+
+-- toggleable
+vim.keymap.set({ 'n', 't' }, '<A-v>', function()
+  require('nvterm.terminal').toggle 'vertical'
+end, { desc = 'terminal toggleable vertical term' })
+
+vim.keymap.set({ 'n', 't' }, '<A-h>', function()
+  require('nvterm.terminal').toggle 'horizontal'
+end, { desc = 'terminal toggleable horizontal term' })
+
+vim.keymap.set({ 'n', 't' }, '<A-i>', function()
+  require('nvterm.terminal').toggle 'float'
+end, { desc = 'terminal toggle floating term' })
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -471,6 +506,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>fw', '<cmd>Telescope live_grep<CR>', { desc = 'telescope live grep' })
       vim.keymap.set('n', '<leader>fb', '<cmd>Telescope buffers<CR>', { desc = 'telescope find buffers' })
       vim.keymap.set('n', '<leader>ff', '<cmd>Telescope find_files<CR>', { desc = 'telescope find files' })
+      vim.keymap.set('n', '<leader>fa', '<cmd>Telescope find_files follow=true no_ignore=true hidden=true<CR>', { desc = 'telescope find all files' })
       vim.keymap.set('n', '<leader>fh', '<cmd>Telescope help_tags<CR>', { desc = 'telescope help page' })
       vim.keymap.set('n', '<leader>fm', '<cmd>Telescope marks<CR>', { desc = 'telescope find marks' })
       vim.keymap.set('n', '<leader>fo', '<cmd>Telescope oldfiles<CR>', { desc = 'telescope find oldfiles' })
@@ -1095,6 +1131,37 @@ require('lazy').setup({
               git = { unmerged = '' },
             },
           },
+        },
+      }
+    end,
+  },
+  {
+    'NvChad/nvterm',
+    config = function()
+      require('nvterm').setup {
+        terminals = {
+          shell = vim.o.shell,
+          list = {},
+          type_opts = {
+            float = {
+              relative = 'editor',
+              row = 0.3,
+              col = 0.25,
+              width = 0.5,
+              height = 0.4,
+              border = 'single',
+            },
+            horizontal = { location = 'rightbelow', split_ratio = 0.3 },
+            vertical = { location = 'rightbelow', split_ratio = 0.5 },
+          },
+        },
+        behavior = {
+          autoclose_on_quit = {
+            enabled = false,
+            confirm = true,
+          },
+          close_on_exit = true,
+          auto_insert = true,
         },
       }
     end,
