@@ -118,6 +118,8 @@ vim.schedule(function()
   vim.opt.clipboard = 'unnamedplus'
 end)
 
+vim.opt.termguicolors = true
+
 -- Enable break indent
 vim.opt.breakindent = true
 
@@ -212,9 +214,28 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 -- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
 -- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
 
+-- tabufline
+-- vim.keymap.set('n', '<leader>b', '<cmd>enew<CR>', { desc = 'buffer new' })
+--
+-- vim.keymap.set('n', '<tab>', function()
+--   require('nvchad.tabufline').next()
+-- end, { desc = 'buffer goto next' })
+--
+-- vim.keymap.set('n', '<S-tab>', function()
+--   require('nvchad.tabufline').prev()
+-- end, { desc = 'buffer goto prev' })
+--
+-- vim.keymap.set('n', '<leader>x', function()
+--   require('nvchad.tabufline').close_buffer()
+-- end, { desc = 'buffer close' })
+
 -- Comment
 vim.keymap.set('n', '<leader>/', 'gcc', { desc = 'toggle comment', remap = true })
 vim.keymap.set('v', '<leader>/', 'gc', { desc = 'toggle comment', remap = true })
+
+-- line number
+vim.keymap.set('n', '<leader>n', '<cmd>set nu!<CR>', { desc = 'toggle line number' })
+vim.keymap.set('n', '<leader>rn', '<cmd>set rnu!<CR>', { desc = 'toggle relative number' })
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -449,6 +470,7 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>fw', '<cmd>Telescope live_grep<CR>', { desc = 'telescope live grep' })
       vim.keymap.set('n', '<leader>fb', '<cmd>Telescope buffers<CR>', { desc = 'telescope find buffers' })
+      vim.keymap.set('n', '<leader>ff', '<cmd>Telescope find_files<CR>', { desc = 'telescope find files' })
       vim.keymap.set('n', '<leader>fh', '<cmd>Telescope help_tags<CR>', { desc = 'telescope help page' })
       vim.keymap.set('n', '<leader>fm', '<cmd>Telescope marks<CR>', { desc = 'telescope find marks' })
       vim.keymap.set('n', '<leader>fo', '<cmd>Telescope oldfiles<CR>', { desc = 'telescope find oldfiles' })
@@ -1077,6 +1099,32 @@ require('lazy').setup({
       }
     end,
   },
+
+  -- 'nvim-lua/plenary.nvim',
+  -- { 'nvim-tree/nvim-web-devicons', lazy = true },
+
+  -- {
+  --   'nvchad/ui',
+  --   config = function()
+  --     require 'nvchad'
+  --   end,
+  -- },
+  --
+  -- {
+  --   'nvchad/base46',
+  --   lazy = true,
+  --   build = function()
+  --     require('base46').load_all_highlights()
+  --   end,
+  -- },
+  -- {
+  --   'akinsho/bufferline.nvim',
+  --   version = '*',
+  --   dependencies = 'nvim-tree/nvim-web-devicons',
+  --   config = function()
+  --     require('bufferline').setup {}
+  --   end,
+  -- },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
