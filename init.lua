@@ -989,28 +989,65 @@ require('lazy').setup({
       }
     end,
   },
-
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
-    config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
-        styles = {
-          comments = { italic = false }, -- Disable italics in comments
-        },
-      }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-storm'
+  {
+    'rebelot/kanagawa.nvim',
+    priority = 1000,
+    init = function()
+      vim.cmd.colorscheme 'kanagawa'
+    end,
+    opts = {
+      compile = false, -- enable compiling the colorscheme
+      undercurl = true, -- enable undercurls
+      commentStyle = { italic = true },
+      functionStyle = {},
+      keywordStyle = { italic = true },
+      statementStyle = { bold = true },
+      typeStyle = {},
+      transparent = false, -- do not set background color
+      -- dimInactive = true, -- dim inactive window `:h hl-NormalNC`
+      terminalColors = true, -- define vim.g.terminal_color_{0,17}
+      colors = { -- add/modify theme and palette colors
+        palette = {},
+        theme = { wave = {}, lotus = {}, dragon = {}, all = {} },
+      },
+      -- overrides = function(colors) -- add/modify highlights
+      --   return {
+      --     -- DiffChange = { bg = '#1f261e' },
+      --     -- DiffText = { fg = '#98bb6c', bg = '#43242b' },
+      --   }
+      -- end,
+      theme = 'wave', -- Load "wave" theme when 'background' option is not set
+      background = { -- map the value of 'background' option to a theme
+        dark = 'wave',
+        light = 'lotus',
+      },
+    },
+    config = function(_, opts)
+      require('kanagawa').setup(opts)
+      vim.cmd.colorscheme 'kanagawa'
     end,
   },
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'folke/tokyonight.nvim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('tokyonight').setup {
+  --       styles = {
+  --         comments = { italic = false }, -- Disable italics in comments
+  --       },
+  --     }
+  --
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could load
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'tokyonight-storm'
+  --   end,
+  -- },
 
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
@@ -1166,6 +1203,266 @@ require('lazy').setup({
       }
     end,
   },
+  {
+    'nvim-neotest/neotest',
+    event = 'VeryLazy',
+    dependencies = {
+      'nvim-neotest/nvim-nio',
+      'folke/trouble.nvim',
+    },
+    opts = {
+      -- Can be a list of adapters like what neotest expects,
+      -- or a list of adapter names,
+      -- or a table of adapter names, mapped to adapter configs.
+      -- The adapter will then be automatically loaded with the config.
+      -- adapters = {},
+      -- Example for loading neotest-golang with a custom config
+      adapters = {
+        ['neotest-golang'] = {
+          go_test_args = { '-v', '-race', '-count=1', '-timeout=60s' },
+          dap_go_enabled = false,
+        },
+      },
+      status = { virtual_text = true },
+      output = { open_on_run = true },
+    },
+    config = function(_, opts)
+      local neotest_ns = vim.api.nvim_create_namespace 'neotest'
+      vim.diagnostic.config({
+        virtual_text = {
+          format = function(diagnostic)
+            -- Replace newline and tab characters with space for more compact diagnostics
+            local message = diagnostic.message:gsub('\n', ' '):gsub('\t', ' '):gsub('%s+', ' '):gsub('^%s+', '')
+            return message
+          end,
+        },
+      }, neotest_ns)
+
+      opts.quickfix = {
+        open = function()
+          require('trouble').open { mode = 'qflist', focus = false }
+        end,
+      }
+
+      opts.consumers = opts.consumers or {}
+      opts.consumers.trouble = function(client)
+        client.listeners.results = function(adapter_id, results, partial)
+          if partial then
+            return
+          end
+          local tree = assert(client:get_position(nil, { adapter = adapter_id }))
+
+          local failed = 0
+          for pos_id, result in pairs(results) do
+            if result.status == 'failed' and tree:get_key(pos_id) then
+              failed = failed + 1
+            end
+          end
+          vim.schedule(function()
+            local trouble = require 'trouble'
+            if trouble.is_open() then
+              trouble.refresh()
+              if failed == 0 then
+                trouble.close()
+              end
+            end
+          end)
+          return {}
+        end
+      end
+
+      if opts.adapters then
+        local adapters = {}
+        for name, config in pairs(opts.adapters or {}) do
+          if type(name) == 'number' then
+            if type(config) == 'string' then
+              config = require(config)
+            end
+            adapters[#adapters + 1] = config
+          elseif config ~= false then
+            local adapter = require(name)
+            if type(config) == 'table' and not vim.tbl_isempty(config) then
+              local meta = getmetatable(adapter)
+              if adapter.setup then
+                adapter.setup(config)
+              elseif adapter.adapter then
+                adapter.adapter(config)
+                adapter = adapter.adapter
+              elseif meta and meta.__call then
+                adapter = adapter(config)
+              else
+                error('Adapter ' .. name .. ' does not support setup')
+              end
+            end
+            adapters[#adapters + 1] = adapter
+          end
+        end
+        opts.adapters = adapters
+      end
+
+      require('neotest').setup(opts)
+    end,
+    keys = {
+      { '<leader>t', '', desc = '+test' },
+      {
+        '<leader>tt',
+        function()
+          require('neotest').run.run(vim.fn.expand '%')
+        end,
+        desc = 'Run File (Neotest)',
+      },
+      {
+        '<leader>tT',
+        function()
+          require('neotest').run.run(vim.uv.cwd())
+        end,
+        desc = 'Run All Test Files (Neotest)',
+      },
+      {
+        '<leader>tr',
+        function()
+          require('neotest').run.run()
+        end,
+        desc = 'Run Nearest (Neotest)',
+      },
+      {
+        '<leader>tl',
+        function()
+          require('neotest').run.run_last()
+        end,
+        desc = 'Run Last (Neotest)',
+      },
+      {
+        '<leader>ts',
+        function()
+          require('neotest').summary.toggle()
+        end,
+        desc = 'Toggle Summary (Neotest)',
+      },
+      {
+        '<leader>to',
+        function()
+          require('neotest').output.open { enter = true, auto_close = true }
+        end,
+        desc = 'Show Output (Neotest)',
+      },
+      {
+        '<leader>tO',
+        function()
+          require('neotest').output_panel.toggle()
+        end,
+        desc = 'Toggle Output Panel (Neotest)',
+      },
+      {
+        '<leader>tS',
+        function()
+          require('neotest').run.stop()
+        end,
+        desc = 'Stop (Neotest)',
+      },
+      {
+        '<leader>tw',
+        function()
+          require('neotest').watch.toggle(vim.fn.expand '%')
+        end,
+        desc = 'Toggle Watch (Neotest)',
+      },
+    },
+  },
+  {
+    'fredrikaverpil/neotest-golang',
+    event = 'VeryLazy',
+  },
+
+  {
+    'sphamba/smear-cursor.nvim',
+    opts = {},
+  },
+  {
+    'SmiteshP/nvim-navic',
+    event = 'VeryLazy',
+    opts = {
+      separator = ' ',
+      highlight = true,
+      lazy_update_context = true,
+      lsp = {
+        auto_attach = true,
+        preference = { 'gopls' },
+      },
+    },
+  },
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+    event = 'VeryLazy',
+    opts = {
+      options = {
+        { theme = 'seoul256' },
+      },
+      sections = {
+        lualine_c = {
+          {
+            'filename',
+            path = 1,
+          },
+          {
+            'navic',
+          },
+        },
+        -- lualine_x = {
+        --   {
+        --     require('noice').api.statusline.mode.get,
+        --     cond = require('noice').api.statusline.mode.has,
+        --     color = { fg = '#ff9e64' },
+        --   },
+        -- },
+      },
+    },
+  },
+  -- {
+  --   'nvim-lualine/lualine.nvim',
+  --   dependencies = { 'nvim-tree/nvim-web-devicons' },
+  --   config = function()
+  --     require('lualine').setup {
+  --       options = { theme = 'gruvbox' },
+  --     }
+  --   end,
+  -- },
+  -- {
+  --   'folke/persistence.nvim',
+  --   event = 'BufReadPre',
+  --   opts = {},
+  --   keys = {
+  --     {
+  --       '<leader>qs',
+  --       function()
+  --         require('persistence').load()
+  --       end,
+  --       desc = 'Restore Session',
+  --     },
+  --     {
+  --       '<leader>qS',
+  --       function()
+  --         require('persistence').select()
+  --       end,
+  --       desc = 'Select Session',
+  --     },
+  --     {
+  --       '<leader>ql',
+  --       function()
+  --         require('persistence').load { last = true }
+  --       end,
+  --       desc = 'Restore Last Session',
+  --     },
+  --     {
+  --       '<leader>qd',
+  --       function()
+  --         require('persistence').stop()
+  --       end,
+  --       desc = "Don't Save Current Session",
+  --     },
+  --   },
+  -- },
 
   -- 'nvim-lua/plenary.nvim',
   -- { 'nvim-tree/nvim-web-devicons', lazy = true },
